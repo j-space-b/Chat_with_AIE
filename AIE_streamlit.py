@@ -75,7 +75,6 @@ with st.sidebar:
 # Main content
 st.markdown("<h1 class='main-header'>Chat with 2024 AIE World Summit Talk Summaries</h1>", unsafe_allow_html=True)
 
-
 @st.cache_data
 def load_document():
     file_id = "18qcIHc8lGJiKztyRKd5m7n2q0b1jvS-v"
@@ -100,7 +99,6 @@ def load_document():
     vectorstore = FAISS.from_documents(documents, embeddings)
     return vectorstore
 
-
 if openai_api_key:
     vectorstore = load_document()
 
@@ -122,7 +120,7 @@ if openai_api_key:
 
         with st.spinner("Thinking..."):
             chain = ConversationalRetrievalChain.from_llm(
-                llm=ChatOpenAI(temperature=0, model_name='gpt-4o'),
+                llm=ChatOpenAI(temperature=0, model_name='gpt-4'),
                 retriever=vectorstore.as_retriever()
             )
             result = chain({"question": prompt, "chat_history": [(message["role"], message["content"]) for message in
