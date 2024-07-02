@@ -3,12 +3,9 @@ import os
 import urllib.request
 import io
 from PyPDF2 import PdfReader
-from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain.embeddings import OpenAIEmbeddings
-from langchain.vectorstores import FAISS
-from langchain.chains import ConversationalRetrievalChain
-from langchain.chat_models import ChatOpenAI
-from langchain.schema import Document
+import openai
+import faiss
+import numpy as np
 
 # Set page configuration
 st.set_page_config(page_title="Chat with 2024 AIE World Summit", layout="wide")
@@ -66,6 +63,7 @@ with st.sidebar:
 
     if openai_api_key:
         os.environ["OPENAI_API_KEY"] = openai_api_key
+        openai.api_key = openai_api_key
 
     st.markdown("---")
     st.markdown("Made with ❤️ by Jonathan Bennion")
@@ -90,17 +88,29 @@ def load_document():
     for page in pdf_reader.pages:
         text += page.extract_text()
     
-    text_splitter = RecursiveCharacterTextSplitter(chunk_size=100, chunk_overlap=50)
-    texts = text_splitter.split_text(text)
+    # Split text into chunks
+    chunk_size = 100
+    texts = [text[i:i + chunk_size] for i in range(0, len(text), chunk_size)]
     
-    documents = [Document(page_content=t) for t in texts]
+    # Function to compute embeddings using OpenAI
+    def compute_embeddings(texts):
+        embeddings = []
+        for text in texts:
+            response = openai.Embedding.create(input=text, model="text-embedding-ada-002")
+            embeddings.append(response['data'][0]['embedding'])
+        return np.array(embeddings)
     
-    embeddings = OpenAIEmbeddings()
-    vectorstore = FAISS.from_documents(documents, embeddings)
-    return vectorstore
+    # Compute embeddings for each chunk of text
+    embeddings = compute_embeddings(texts)
+    
+    # Create FAISS index and add embeddings
+    index = faiss.IndexFlatL2(embeddings.shape[1])
+    index.add(embeddings)
+    
+    return index, texts
 
 if openai_api_key:
-    vectorstore = load_document()
+    vectorstore, texts = load_document()
 
     if "messages" not in st.session_state:
         st.session_state.messages = []
@@ -119,13 +129,12 @@ if openai_api_key:
                         unsafe_allow_html=True)
 
         with st.spinner("Thinking..."):
-            chain = ConversationalRetrievalChain.from_llm(
-                llm=ChatOpenAI(temperature=0, model_name='gpt-4'),
-                retriever=vectorstore.as_retriever()
-            )
-            result = chain({"question": prompt, "chat_history": [(message["role"], message["content"]) for message in
-                                                                 st.session_state.messages]})
-            response = result['answer']
+            # Compute the embedding for the query
+            query_embedding = compute_embeddings([prompt])
+            D, I = vectorstore.search(query_embedding, k=1)  # search for the nearest neighbors
+            
+            # Get the best matching document
+            response = texts[I[0][0]]
 
         with st.container():
             st.markdown(f"<div class='chat-message bot'>" +
