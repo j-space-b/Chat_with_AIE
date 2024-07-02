@@ -76,7 +76,7 @@ with st.sidebar:
 st.markdown("<h1 class='main-header'>Chat with 2024 AIE World Summit Talk Summaries</h1>", unsafe_allow_html=True)
 
 
-pythonCopy@st.cache_resource
+@st.cache_data
 def load_document():
     file_id = "18qcIHc8lGJiKztyRKd5m7n2q0b1jvS-v"
     download_url = f"https://drive.google.com/uc?export=download&id={file_id}"
