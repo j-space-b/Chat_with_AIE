@@ -1,5 +1,6 @@
-import requests
+import urllib.request
 import io
+from PyPDF2 import PdfReader
 import streamlit as st
 import os
 from langchain.document_loaders import PyPDFLoader
@@ -8,6 +9,7 @@ from langchain.embeddings import OpenAIEmbeddings
 from langchain.vectorstores import Chroma
 from langchain.chains import ConversationalRetrievalChain
 from langchain.chat_models import ChatOpenAI
+from langchain.schema import Document
 
 # Set page configuration
 st.set_page_config(page_title="Chat with 2024 AIE World Summit", layout="wide")
@@ -77,27 +79,26 @@ st.markdown("<h1 class='main-header'>Chat with 2024 AIE World Summit Talk Summar
 
 @st.cache_resource
 def load_document():
-    # drive file ID
     file_id = "18qcIHc8lGJiKztyRKd5m7n2q0b1jvS-v"
-    
-    # Construct the URL
     download_url = f"https://drive.google.com/uc?export=download&id={file_id}"
     
-    # Download the file from drive
-    response = requests.get(download_url)
-    if response.status_code != 200:
-        raise Exception("Failed to download the file")
+    with urllib.request.urlopen(download_url) as response:
+        pdf_content = response.read()
     
-    # Create object from content
-    pdf_file = io.BytesIO(response.content)
+    pdf_file = io.BytesIO(pdf_content)
     
-    # Use PyPDFLoader 
-    loader = PyPDFLoader(pdf_file)
-    documents = loader.load()
+    pdf_reader = PdfReader(pdf_file)
+    text = ""
+    for page in pdf_reader.pages:
+        text += page.extract_text()
+    
     text_splitter = RecursiveCharacterTextSplitter(chunk_size=100, chunk_overlap=50)
-    texts = text_splitter.split_documents(documents)
+    texts = text_splitter.split_text(text)
+    
+    documents = [Document(page_content=t) for t in texts]
+    
     embeddings = OpenAIEmbeddings()
-    vectorstore = Chroma.from_documents(texts, embeddings)
+    vectorstore = Chroma.from_documents(documents, embeddings)
     return vectorstore
 
 
