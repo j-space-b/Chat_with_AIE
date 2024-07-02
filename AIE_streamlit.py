@@ -96,7 +96,7 @@ def load_document():
     def compute_embeddings(texts):
         embeddings = []
         for text in texts:
-            response = openai.Embedding.create(input=text, model="text-embedding-ada-002")
+            response = openai.Embedding.create(input=[text], model="text-embedding-ada-002")
             embeddings.append(response['data'][0]['embedding'])
         return np.array(embeddings)
     
