@@ -1,12 +1,11 @@
+import streamlit as st
+import os
 import urllib.request
 import io
 from PyPDF2 import PdfReader
-import streamlit as st
-import os
-from langchain.document_loaders import PyPDFLoader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.embeddings import OpenAIEmbeddings
-from langchain.vectorstores import Chroma
+from langchain.vectorstores import FAISS
 from langchain.chains import ConversationalRetrievalChain
 from langchain.chat_models import ChatOpenAI
 from langchain.schema import Document
@@ -77,7 +76,7 @@ with st.sidebar:
 st.markdown("<h1 class='main-header'>Chat with 2024 AIE World Summit Talk Summaries</h1>", unsafe_allow_html=True)
 
 
-@st.cache_resource
+pythonCopy@st.cache_resource
 def load_document():
     file_id = "18qcIHc8lGJiKztyRKd5m7n2q0b1jvS-v"
     download_url = f"https://drive.google.com/uc?export=download&id={file_id}"
@@ -98,7 +97,7 @@ def load_document():
     documents = [Document(page_content=t) for t in texts]
     
     embeddings = OpenAIEmbeddings()
-    vectorstore = Chroma.from_documents(documents, embeddings)
+    vectorstore = FAISS.from_documents(documents, embeddings)
     return vectorstore
 
 
