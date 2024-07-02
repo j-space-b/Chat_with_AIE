@@ -1,3 +1,5 @@
+import requests
+import io
 import streamlit as st
 import os
 from langchain.document_loaders import PyPDFLoader
@@ -75,9 +77,24 @@ st.markdown("<h1 class='main-header'>Chat with 2024 AIE World Summit Talk Summar
 
 @st.cache_resource
 def load_document():
-    loader = PyPDFLoader("https://drive.google.com/file/d/18qcIHc8lGJiKztyRKd5m7n2q0b1jvS-v/view?usp=sharing")
+    # drive file ID
+    file_id = "18qcIHc8lGJiKztyRKd5m7n2q0b1jvS-v"
+    
+    # Construct the URL
+    download_url = f"https://drive.google.com/uc?export=download&id={file_id}"
+    
+    # Download the file from drive
+    response = requests.get(download_url)
+    if response.status_code != 200:
+        raise Exception("Failed to download the file")
+    
+    # Create object from content
+    pdf_file = io.BytesIO(response.content)
+    
+    # Use PyPDFLoader 
+    loader = PyPDFLoader(pdf_file)
     documents = loader.load()
-    text_splitter = RecursiveCharacterTextSplitter(chunk_size=100, chunk_overlap=50) # not going to lose any info lol
+    text_splitter = RecursiveCharacterTextSplitter(chunk_size=100, chunk_overlap=50)
     texts = text_splitter.split_documents(documents)
     embeddings = OpenAIEmbeddings()
     vectorstore = Chroma.from_documents(texts, embeddings)
